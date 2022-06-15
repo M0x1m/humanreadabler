@@ -18,7 +18,7 @@ $ make
 ## Usage
 
 ```
-$ <cmd> | ./humanreadabler -[kmg] [--kilo | --mega | --giga]
+$ <cmd> | ./humanreadabler -[kmg] [--kilo | --mega | --giga | --si]
 ```
 
 __-k | --kilo__ &emsp; Disables kilo translates
@@ -30,6 +30,10 @@ __-m | --mega__ &emsp; Disables mega translates
 If only this flag is provided the program will not translates compatible numbers to megas, but will translates numbers 1024 - 1073741824 to kilos and numbers above to gigas.
 
 __-g | --giga or other same__ &emsp; Like this two above.
+
+__--si__ &emsp; Turns using SI instead of 2^x
+
+If this flag is provided kilos will translates from 1000 to 1000000 instead of 1024-1048576 and etc.
 
 #### Example
 
