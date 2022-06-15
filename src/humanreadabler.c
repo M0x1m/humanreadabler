@@ -8,11 +8,13 @@
 #define KILO 1 << 0
 #define MEGA 1 << 1
 #define GIGA 1 << 2
+#define SI 1 << 7
 
 char SHORTS = (KILO | MEGA | GIGA);
 
 #define streq(s1, s2) strcmp(s1, s2) == 0
 #define isdigit(c) (c > 47 && c < 58)
+#define isSI ((SHORTS & SI) != 0)
 
 void usage(FILE* stream, const char* arg0){
   fprintf(stream, "Usage: <cmd> | %s -[kmg] [args]\n", arg0);
@@ -20,17 +22,18 @@ void usage(FILE* stream, const char* arg0){
   fprintf(stream, "    --kilo | -k   Disables kilos translates in strings\n");
   fprintf(stream, "    --mega | -m   Disables megas translates in strings\n");
   fprintf(stream, "    --giga | -g   Disables gigas translates in strings\n");
-  fprintf(stream, "    --help | -h    Prints this message in stdout.\n");
+  fprintf(stream, "    --si          Uses SI(10^X) insted of 2^X\n");
+  fprintf(stream, "    --help | -h   Prints this message in stdout.\n");
 }
 
 static char* hnums(unsigned long num){
   static char buf[23];
-  if(num >= 1 << 10 && (num <= 1 << 20 || (SHORTS & (MEGA | GIGA)) != 0) && (SHORTS & KILO) != 0){
-    sprintf(buf, "%ldK", num/(1 << 10));
-  }else if(num >= 1 << 20 && (num <= 1 << 30 || (SHORTS & (GIGA)) != 0) && (SHORTS & MEGA) != 0){
-    sprintf(buf, "%ldM", num/(1 << 20));
-  }else if(num >= 1 << 30/* && num <= 1LLU << 40LLU*/ && (SHORTS & GIGA) != 0){
-    sprintf(buf, "%ldG", num/(1 << 30));
+  if(num >= (isSI ? 1000 : 1 << 10) && (num <= (isSI ? 1000000 : 1 << 20) || (SHORTS & (MEGA | GIGA)) != 0) && (SHORTS & KILO) != 0){
+    sprintf(buf, "%ldK", num/(isSI ? 1000 : 1 << 10));
+  }else if(num >= (isSI ? 1000000 : 1 << 20) && (num <= (isSI ? 1000000000 : 1 << 30) || (SHORTS & (GIGA)) != 0) && (SHORTS & MEGA) != 0){
+    sprintf(buf, "%ldM", num/(isSI ? 1000000 : 1 << 20));
+  }else if(num >= (isSI ? 1000000000 : 1 << 30)/* && num <= 1LLU << 40LLU*/ && (SHORTS & GIGA) != 0){
+    sprintf(buf, "%ldG", num/(isSI ? 1000000000 : 1 << 30));
   }else{
     sprintf(buf, "%ld", num);
   }
@@ -103,6 +106,8 @@ int main(int argc, char** argv){
       SHORTS &= ~MEGA;
     }else if (streq(argv[i], "--giga")){
       SHORTS &= ~GIGA;
+    }else if (streq(argv[i], "--si")){
+      SHORTS |= SI;
     }else{
       if (parsearg(argv[i], "kmg", &SHORTS) == 0) continue;
       usage(stderr, argv[0]);
