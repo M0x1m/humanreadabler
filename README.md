@@ -18,8 +18,18 @@ $ make
 ## Usage
 
 ```
-$ <cmd> | ./humanreadabler
+$ <cmd> | ./humanreadabler -[kmg] [--kilo | --mega | --giga]
 ```
+
+__-k | --kilo__ &emsp; Disables kilo translates
+
+This flag disables kilos translate. Thus, if only this flag is provided the program will cannot translate numbers from 0 to 104857. The short version of this parameter can be provided with others in one commnad line argument like this: `./humanreadabler -kg`, this command will traslate all compatible numbers from stdin to megas.
+
+__-m | --mega__ &emsp; Disables mega translates
+
+If only this flag is provided the program will not translates compatible numbers to megas, but will translates numbers 1024 - 1073741824 to kilos and numbers above to gigas.
+
+__-g | --giga or other same__ &emsp; Like this two above.
 
 #### Example
 
