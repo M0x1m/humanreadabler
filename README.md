@@ -18,7 +18,7 @@ $ make
 ## Usage
 
 ```
-$ <cmd> | ./humanreadabler -[kmg] [--kilo | --mega | --giga | --si | --precision <num>] [-p <num>]
+$ <cmd> | ./humanreadabler -[kmgtPe] [--kilo | --mega | --giga | --tera | --peta | --exa | --si | --precision <num>] [-p <num>]
 ```
 
 __-k | --kilo__ &emsp; Disables kilo translates
