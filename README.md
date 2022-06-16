@@ -18,7 +18,7 @@ $ make
 ## Usage
 
 ```
-$ <cmd> | ./humanreadabler -[kmg] [--kilo | --mega | --giga | --si]
+$ <cmd> | ./humanreadabler -[kmg] [--kilo | --mega | --giga | --si | --precision <num>] [-p <num>]
 ```
 
 __-k | --kilo__ &emsp; Disables kilo translates
@@ -34,6 +34,8 @@ __-g | --giga or other same__ &emsp; Like this two above.
 __--si__ &emsp; Turns using SI instead of 2^x
 
 If this flag is provided kilos will translates from 1000 to 1000000 instead of 1024-1048576 and etc.
+
+__-p | --precision__ &emsp; Defines number of digits after dot in translated numbers.
 
 #### Example
 
