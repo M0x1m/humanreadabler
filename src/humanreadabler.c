@@ -4,14 +4,17 @@
 #include <stdlib.h>
 #include <sys/ioctl.h>
 #include <poll.h>
+#include <limits.h>
 
 #define KILO 1 << 0
 #define MEGA 1 << 1
 #define GIGA 1 << 2
 #define TERA 1 << 3
+#define PETA 1 << 4
+#define EXA  1 << 5
 #define SI   1 << 7
 
-char SHORTS = (KILO | MEGA | GIGA | TERA);
+char SHORTS = (KILO | MEGA | GIGA | TERA | PETA | EXA);
 
 #define streq(s1, s2) strcmp(s1, s2) == 0
 #define isdigit(c) (c > 47 && c < 58)
@@ -24,15 +27,26 @@ void usage(FILE* stream, const char* arg0){
   fprintf(stream, "    --mega | -m         Disables megas translates in strings\n");
   fprintf(stream, "    --giga | -g         Disables gigas translates in strings\n");
   fprintf(stream, "    --tera | -t         Disables teras translates in strings\n");
+  fprintf(stream, "    --peta | -P         Disables petas translates in strings\n");
+  fprintf(stream, "    --exa  | -e         Disables exas translates in strings\n");
   fprintf(stream, "    --precision <num>   Sets precision of translated numbers\n");
   fprintf(stream, "    or       -p <num>\n");
   fprintf(stream, "    --si                Uses SI(10^X) instead of 2^X\n");
   fprintf(stream, "    --help | -h         Prints this message in stdout.\n");
 }
 
-static char* hnums(unsigned long num, int precision){
-  static char buf[128];
-  if (num >= (isSI ? 1000000000000LLU : 1LLU << 40LLU) && (SHORTS & TERA) != 0){
+static char* hnums(unsigned long long num, int precision){
+  static char b[128];
+  char* buf = b;
+  if (num == ULONG_LONG_MAX){
+    *(short*)buf = '>' | '=' << 8;
+    buf += 2;
+  }
+  if (num >= (isSI ? 1000000000000000000LLU : 1LLU << 60LLU) && (SHORTS & EXA) != 0){
+    sprintf(buf, "%.*fE", precision, (double)num/(double)(isSI ? 1000000000000000000LLU : 1LLU << 60LLU));
+  }else if (num >= (isSI ? 1000000000000000LLU : 1LLU << 50LLU) && (SHORTS & PETA) != 0){
+    sprintf(buf, "%.*fP", precision, (double)num/(double)(isSI ? 1000000000000000LLU : 1LLU << 50LLU));
+  }else if (num >= (isSI ? 1000000000000LLU : 1LLU << 40LLU) && (SHORTS & TERA) != 0){
     sprintf(buf, "%.*fT", precision, (double)num/(double)(isSI ? 1000000000000LLU : 1LLU << 40LLU));
   }else if (num >= (isSI ? 1000000000 : 1 << 30) && (SHORTS & GIGA) != 0){
     sprintf(buf, "%.*fG", precision, (double)num/(double)(isSI ? 1000000000 : 1 << 30));
@@ -41,9 +55,9 @@ static char* hnums(unsigned long num, int precision){
   }else if (num >= (isSI ? 1000 : 1 << 10) && (SHORTS & KILO) != 0){
     sprintf(buf, "%.*fK", precision, (double)num/(double)(isSI ? 1000 : 1 << 10));
   }else{
-    sprintf(buf, "%ld", num);
+    sprintf(buf, "%llu", num);
   }
-  return buf;
+  return b;
 }
 
 void* transl_nums(char* txt, int precision){
@@ -70,7 +84,7 @@ void* transl_nums(char* txt, int precision){
       char num[(txt2 - txt) + 1];
       num[txt2 - txt] = 0;
       memcpy(num, txt, txt2 - txt);
-      const char* n = hnums(atol(num), precision);
+      const char* n = hnums(strtoull(num, NULL, 0), precision);
       len += strlen(n);
       {
         long off = ret - rret;
@@ -119,6 +133,10 @@ int main(int argc, char** argv){
       SHORTS &= ~GIGA;
     }else if (streq(argv[i], "--tera")){
       SHORTS &= ~TERA;
+    }else if (streq(argv[i], "--peta")){
+      SHORTS &= ~PETA;
+    }else if (streq(argv[i], "--exa")){
+      SHORTS &= ~EXA;
     }else if (streq(argv[i], "--si")){
       SHORTS |= SI;
     }else if (streq(argv[i], "--precision") ||
@@ -127,7 +145,7 @@ int main(int argc, char** argv){
       precision = atoi(argv[i+1]);
       i++;
     }else{
-      if (parsearg(argv[i], "kmgt", &SHORTS) == 0) continue;
+      if (parsearg(argv[i], "kmgtPe", &SHORTS) == 0) continue;
     usage_err:
       usage(stderr, argv[0]);
       exit(1);
