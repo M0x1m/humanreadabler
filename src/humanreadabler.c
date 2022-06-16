@@ -8,39 +8,45 @@
 #define KILO 1 << 0
 #define MEGA 1 << 1
 #define GIGA 1 << 2
-#define SI 1 << 7
+#define TERA 1 << 3
+#define SI   1 << 7
 
-char SHORTS = (KILO | MEGA | GIGA);
+char SHORTS = (KILO | MEGA | GIGA | TERA);
 
 #define streq(s1, s2) strcmp(s1, s2) == 0
 #define isdigit(c) (c > 47 && c < 58)
 #define isSI ((SHORTS & SI) != 0)
 
 void usage(FILE* stream, const char* arg0){
-  fprintf(stream, "Usage: <cmd> | %s -[kmg] [args]\n", arg0);
+  fprintf(stream, "Usage: <cmd> | %s -[kmgt] [args]\n", arg0);
   fprintf(stream, "  Arguments:\n");
-  fprintf(stream, "    --kilo | -k   Disables kilos translates in strings\n");
-  fprintf(stream, "    --mega | -m   Disables megas translates in strings\n");
-  fprintf(stream, "    --giga | -g   Disables gigas translates in strings\n");
-  fprintf(stream, "    --si          Uses SI(10^X) insted of 2^X\n");
-  fprintf(stream, "    --help | -h   Prints this message in stdout.\n");
+  fprintf(stream, "    --kilo | -k         Disables kilos translates in strings\n");
+  fprintf(stream, "    --mega | -m         Disables megas translates in strings\n");
+  fprintf(stream, "    --giga | -g         Disables gigas translates in strings\n");
+  fprintf(stream, "    --tera | -t         Disables teras translates in strings\n");
+  fprintf(stream, "    --precision <num>   Sets precision of translated numbers\n");
+  fprintf(stream, "    or       -p <num>\n");
+  fprintf(stream, "    --si                Uses SI(10^X) instead of 2^X\n");
+  fprintf(stream, "    --help | -h         Prints this message in stdout.\n");
 }
 
-static char* hnums(unsigned long num){
-  static char buf[23];
-  if(num >= (isSI ? 1000 : 1 << 10) && (num <= (isSI ? 1000000 : 1 << 20) || (SHORTS & (MEGA | GIGA)) != 0) && (SHORTS & KILO) != 0){
-    sprintf(buf, "%ldK", num/(isSI ? 1000 : 1 << 10));
-  }else if(num >= (isSI ? 1000000 : 1 << 20) && (num <= (isSI ? 1000000000 : 1 << 30) || (SHORTS & (GIGA)) != 0) && (SHORTS & MEGA) != 0){
-    sprintf(buf, "%ldM", num/(isSI ? 1000000 : 1 << 20));
-  }else if(num >= (isSI ? 1000000000 : 1 << 30)/* && num <= 1LLU << 40LLU*/ && (SHORTS & GIGA) != 0){
-    sprintf(buf, "%ldG", num/(isSI ? 1000000000 : 1 << 30));
+static char* hnums(unsigned long num, int precision){
+  static char buf[128];
+  if (num >= (isSI ? 1000000000000LLU : 1LLU << 40LLU) && (SHORTS & TERA) != 0){
+    sprintf(buf, "%.*fT", precision, (double)num/(double)(isSI ? 1000000000000LLU : 1LLU << 40LLU));
+  }else if (num >= (isSI ? 1000000000 : 1 << 30) && (SHORTS & GIGA) != 0){
+    sprintf(buf, "%.*fG", precision, (double)num/(double)(isSI ? 1000000000 : 1 << 30));
+  }else if (num >= (isSI ? 1000000 : 1 << 20) && (SHORTS & MEGA) != 0){
+    sprintf(buf, "%.*fM", precision, (double)num/(double)(isSI ? 1000000 : 1 << 20));
+  }else if (num >= (isSI ? 1000 : 1 << 10) && (SHORTS & KILO) != 0){
+    sprintf(buf, "%.*fK", precision, (double)num/(double)(isSI ? 1000 : 1 << 10));
   }else{
     sprintf(buf, "%ld", num);
   }
   return buf;
 }
 
-void* transl_nums(char* txt){
+void* transl_nums(char* txt, int precision){
   char* txt2 = txt;
   char* txte = txt+strlen(txt);
   long len = 1;
@@ -64,7 +70,7 @@ void* transl_nums(char* txt){
       char num[(txt2 - txt) + 1];
       num[txt2 - txt] = 0;
       memcpy(num, txt, txt2 - txt);
-      const char* n = hnums(atol(num));
+      const char* n = hnums(atol(num), precision);
       len += strlen(n);
       {
         long off = ret - rret;
@@ -81,21 +87,26 @@ void* transl_nums(char* txt){
 }
 
 int parsearg(const char * arg, const char* fmt, char* target){
+  char c;
   if(*arg != '-') return -1;
   if(*(arg+1) == '-') return -1;
   ++arg;
   if(strlen(arg) > strlen(fmt)) return -1;
   for(int i = 0; i < strlen(arg); ++i){
+    c = 0;
     for(int j = 0; j < strlen(fmt); ++j){
       if(arg[i] == fmt[j]){
         *target &= ~(1 << j);
+        c = 1;
       }
     }
+    if (!c) return -1;
   }
   return 0;
 }
 
 int main(int argc, char** argv){
+  int precision = 1;
   for (int i = 1; i < argc; ++i){
     if (streq(argv[i], "-h") || streq(argv[i], "--help")){
       usage(stdout, argv[0]);
@@ -106,10 +117,18 @@ int main(int argc, char** argv){
       SHORTS &= ~MEGA;
     }else if (streq(argv[i], "--giga")){
       SHORTS &= ~GIGA;
+    }else if (streq(argv[i], "--tera")){
+      SHORTS &= ~TERA;
     }else if (streq(argv[i], "--si")){
       SHORTS |= SI;
+    }else if (streq(argv[i], "--precision") ||
+              streq(argv[i], "-p")){
+      if ( argc <= i+1 ) goto usage_err;
+      precision = atoi(argv[i+1]);
+      i++;
     }else{
-      if (parsearg(argv[i], "kmg", &SHORTS) == 0) continue;
+      if (parsearg(argv[i], "kmgt", &SHORTS) == 0) continue;
+    usage_err:
       usage(stderr, argv[0]);
       exit(1);
     }
@@ -130,7 +149,7 @@ int main(int argc, char** argv){
     buf[cnt] = 0;
     fread(buf, cnt, 1, stdin);
     void* s;
-    printf(s = transl_nums(buf));
+    printf(s = transl_nums(buf, precision));
     fflush(stdout);
     free(s);
   }
